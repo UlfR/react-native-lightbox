@@ -44,6 +44,7 @@ var LightboxOverlay = React.createClass({
     onClose:         PropTypes.func,
     swipeToDismiss:  PropTypes.bool,
     pinchToZoom:     PropTypes.bool,
+    afterTransform:  PropTypes.func,
   },
 
   getInitialState: function() {
@@ -75,7 +76,7 @@ var LightboxOverlay = React.createClass({
   },
 
   open: function() {
-    StatusBar.setHidden(true, 'fade');
+    StatusBar.setHidden(false, 'fade');
     this.state.pan.setValue(0);
     this.setState({
       isAnimating: true,
@@ -93,7 +94,7 @@ var LightboxOverlay = React.createClass({
   },
 
   close: function() {
-    StatusBar.setHidden(false, 'fade');
+    StatusBar.setHidden(true, 'fade');
     this.setState({
       isClosing: true,
       isAnimating: true,
@@ -128,6 +129,8 @@ var LightboxOverlay = React.createClass({
   },
 
   onTransformGestureReleased: function({translateX, translateY}) {
+    if (this.props.afterTransform && this.props.afterTransform({translateX, translateY})) return false;
+
     const { swipeToDismiss } = this.props;
 
     if(Math.abs(translateY) > DRAG_DISMISS_THRESHOLD && swipeToDismiss) {
@@ -152,6 +155,13 @@ var LightboxOverlay = React.createClass({
     if(this.props.isOpen != props.isOpen && props.isOpen) {
       this.open();
     }
+  },
+
+  recalculateDimensions: function(){
+    this.setState({
+      windowWidth: Dimensions.get('window').width,
+      windowHeight: Dimensions.get('window').height
+    });
   },
 
   render: function() {
@@ -212,7 +222,7 @@ var LightboxOverlay = React.createClass({
           enableTransform={true}
           enableScale={true}
           enableTranslate={true}
-          enableResistance={true}
+          enableResistance={false}
           maxScale={3}
           onTransformGestureReleased={this.onTransformGestureReleased}
           onViewTransformed={this.onViewTransformed}
@@ -223,13 +233,16 @@ var LightboxOverlay = React.createClass({
     }
 
     return (
-      <Modal visible={isOpen} transparent={true}>
+      <View onLayout={() => {this.recalculateDimensions()}} style={{marginTop: -8, top: -8, position: 'absolute'}}>
+        <StatusBar backgroundColor="black" barStyle="light-content" translucent={true}/>
+      <Modal visible={isOpen} transparent={true} onRequestClose={() => this.close()} style={{marginTop: -8, top: -8, position: 'absolute'}}>
         {background}
         <Animated.View style={[openStyle, dragStyle]} >
           {content}
         </Animated.View>
         {header}
       </Modal>
+      </View>
     );
   }
 });
